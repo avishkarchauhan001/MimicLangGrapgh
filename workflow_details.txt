@@ -1,0 +1,65 @@
+WORKFLOW ENGINE & DATA QUALITY PIPELINE DETAILS
+
+--- FILES ---
+
+1. app/engine.py
+   - Contains the core logic.
+   - Classes:
+     - Node: Wrapper for functions.
+     - Workflow: Manages nodes, edges, and execution loop.
+
+2. app/registry.py
+   - ToolRegistry: Singleton to manage available tools (functions).
+
+3. app/schemas.py
+   - Pydantic models for API requests/responses.
+
+4. app/main.py
+   - FastAPI application.
+   - Endpoints:
+     - POST /graph/create
+     - POST /graph/run
+     - GET /graph/state/{run_id}
+   - Demo Endpoint:
+     - POST /demo/create_data_quality
+
+5. app/workflows/data_quality.py
+   - Implementation of Option C: Data Quality Pipeline.
+
+--- DATA QUALITY WORKFLOW ---
+
+Goal: Clean data by profiling, finding anomalies, and generating rules to handle them until the data is "clean" (anomalies <= threshold).
+
+Functions (Tools):
+
+1. profile_data(state)
+   - Input: state['data']
+   - Action: Counts items, prints a preview.
+   - Output: Updates state['profile']
+
+2. identify_anomalies(state)
+   - Input: state['data'], state['rules']
+   - Action: Scans data. Values > 100 are anomalies UNLESS a rule allows them.
+   - Output: Updates state['anomalies'] (list of anomalous values)
+
+3. generate_rules(state)
+   - Input: state['anomalies']
+   - Action: If anomalies exist, creates a rule {"allow_gt_100": True}.
+   - Output: Appends to state['rules']
+
+4. apply_rules(state)
+   - Input: state['rules']
+   - Action: Mock step. Logic suggests rules are effectively applied in the next 'identify' pass.
+   - Output: (State update if needed)
+
+Loop Logic (check_anomalies_loop):
+   - Logic: Checks len(state['anomalies']).
+   - if count <= state['threshold']: returns "__END__"
+   - else: returns "generate_rules"
+
+Flow:
+   profile_data -> identify_anomalies 
+         -> (conditional) 
+             -> generate_rules -> apply_rules -> identify_anomalies
+             OR
+             -> __END__
